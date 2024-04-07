@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "paths": {
+    "/cans": {
+      "name": "/cans",
+      "lambdaFunction": "qadetection306b72d4",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}

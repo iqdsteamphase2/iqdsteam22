@@ -1,0 +1,91 @@
+{
+  "api": {
+    "qadetection": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "qadetection306b72d4"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    }
+  },
+  "auth": {
+    "qadetectionfa720d49": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyCharacters": [],
+          "passwordPolicyMinLength": 8
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito"
+    }
+  },
+  "function": {
+    "qadetection306b72d4": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "qafunction": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_qadetection306b72d4_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "qadetection306b72d4"
+        }
+      ]
+    },
+    "AMPLIFY_function_qadetection306b72d4_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "qadetection306b72d4"
+        }
+      ]
+    },
+    "AMPLIFY_function_qafunction_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "qafunction"
+        }
+      ]
+    },
+    "AMPLIFY_function_qafunction_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "qafunction"
+        }
+      ]
+    }
+  },
+  "storage": {}
+}

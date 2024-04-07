@@ -1,0 +1,33 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-qadetection-dev-175854-authRole",
+      "UnauthRoleArn": "arn:aws:iam::590183885730:role/amplify-qadetection-dev-175854-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::590183885730:role/amplify-qadetection-dev-175854-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-qadetection-dev-175854-deployment",
+      "UnauthRoleName": "amplify-qadetection-dev-175854-unauthRole",
+      "StackName": "amplify-qadetection-dev-175854",
+      "StackId": "arn:aws:cloudformation:us-east-1:590183885730:stack/amplify-qadetection-dev-175854/c3d443d0-e3e8-11ee-81d3-12889d99e681",
+      "AmplifyAppId": "d12u9q2trjrt5v"
+    },
+    "categories": {
+      "auth": {
+        "qadetectionfa720d49": {}
+      },
+      "function": {
+        "qafunction": {
+          "deploymentBucketName": "amplify-qadetection-dev-175854-deployment",
+          "s3Key": "amplify-builds/qafunction-74703048657231392f41-build.zip"
+        },
+        "qadetection306b72d4": {
+          "deploymentBucketName": "amplify-qadetection-dev-175854-deployment",
+          "s3Key": "amplify-builds/qadetection306b72d4-6657454948635941575a-build.zip"
+        }
+      },
+      "api": {
+        "qadetection": {}
+      }
+    }
+  }
+}
