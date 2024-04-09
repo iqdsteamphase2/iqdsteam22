@@ -277,19 +277,21 @@ function MainPage() {
       return acc;
     }, {});
 
-    const chartData = Object.keys(aggregatedData).map((date) => {
-      const { total, good, open, dented } = aggregatedData[date];
-      return {
-        date,
-        proportionGood: good / total,
-        proportionOpen: open / total,
-        proportionDented: dented / total,
-        // Adding counts here
-        countGood: good,
-        countOpen: open,
-        countDented: dented,
-      };
-    });
+    const chartData = Object.keys(aggregatedData)
+      .sort((a, b) => new Date(a) - new Date(b)) // Sort the dates chronologically
+      .map((date) => {
+        const { total, good, open, dented } = aggregatedData[date];
+        return {
+          date,
+          proportionGood: good / total,
+          proportionOpen: open / total,
+          proportionDented: dented / total,
+          // Adding counts here
+          countGood: good,
+          countOpen: open,
+          countDented: dented,
+        };
+      });
 
     console.log(chartData);
 
