@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+
 import { withAuthenticator } from "@aws-amplify/ui-react";
 import { signOut } from "aws-amplify/auth";
 import { get } from "aws-amplify/api";
@@ -6,6 +7,10 @@ import "@aws-amplify/ui-react/styles.css";
 import Chart from "chart.js/auto";
 import logoImage from "./assets/utdlogo.png";
 import "@aws-amplify/ui-react/styles.css";
+import { list as listS3Objects, getUrl } from "@aws-amplify/storage";
+import { Amplify } from "aws-amplify";
+import { Modal, Backdrop, Fade } from "@mui/material";
+import { Loader, SelectField } from "@aws-amplify/ui-react";
 
 import { styled, useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -30,6 +35,19 @@ import HomeIcon from "@mui/icons-material/Home";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { Alert } from "@mui/material";
 import { Button } from "@aws-amplify/ui-react";
+import amplifyconfig from "./amplifyconfiguration.json";
+
+Amplify.configure(amplifyconfig, {
+  Storage: {
+    S3: {
+      prefixResolver: async ({ accessLevel, targetIdentityId }) => {
+        if (accessLevel === "guest") {
+          return "unpredicted/";
+        }
+      },
+    },
+  },
+});
 
 const myTheme = {
   name: "my-orange-theme",
@@ -112,19 +130,37 @@ const AppBar = styled(MuiAppBar, {
   }),
 }));
 
-async function getTodo(setAlert) {
+async function getTodo(setAlert, getMostRecentItemImageUrl, setLoading) {
+  setLoading(true); // Show loader at the beginning of the request
   try {
-    console.log("Attempting to fetch data...");
-    const response = await get({
+    const operation = await get({
       apiName: "qadetection",
       path: "/cans",
     });
-    console.log("GET call succeeded: ", response);
-    setAlert({ message: "Capture successful!", type: "success" });
+
+    const response = await operation.response;
+
+    if (response.statusCode === 200) {
+      setAlert({ message: "Capture successful!", type: "success" });
+
+      setTimeout(async () => {
+        await getMostRecentItemImageUrl(setLoading);
+      }, 6000);
+    } else {
+      console.error("Server responded with error: ", response);
+      setAlert({
+        message: `Capture failed: Server responded with status ${response.statusCode}`,
+        type: "error",
+      });
+      setLoading(false); // Hide loader on non-200 response
+    }
   } catch (e) {
-    console.error("GET call failed: ", e);
-    // Explicitly checking if the catch block is reached
-    setAlert({ message: "Capture failed.", type: "error" });
+    console.error("Error caught in getTodo:", e);
+    setAlert({
+      message: "Capture failed due to network or request error.",
+      type: "error",
+    });
+    setLoading(false); // Hide loader on catch
   }
 }
 
@@ -137,11 +173,76 @@ const DrawerHeader = styled("div")(({ theme }) => ({
   position: "relative",
 }));
 
+const LoaderContainer = styled("div")({
+  position: "fixed", // Use fixed to cover the entire screen
+  top: 0,
+  left: 0,
+  width: "100%",
+  height: "100%",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+});
+
 function MainPage() {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("Main Page");
   const [alert, setAlert] = useState({ message: null, type: null });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [latestImageUrl, setLatestImageUrl] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState("");
+
+  const pChartRef = useRef(null);
+  const cChartRef = useRef(null);
+
+  const getMostRecentItemImageUrl = async () => {
+    try {
+      const listResult = await listS3Objects({
+        prefix: "", // Adjust this prefix according to where your images are stored
+      });
+
+      if (listResult.items.length > 0) {
+        const mostRecentItem = listResult.items.sort(
+          (a, b) => new Date(b.lastModified) - new Date(a.lastModified)
+        )[0];
+
+        const getUrlResult = await getUrl({
+          key: mostRecentItem.key,
+          options: {
+            accessLevel: "guest",
+            expiresIn: 60,
+            useAccelerateEndpoint: true,
+          },
+        });
+
+        // Parse the URL to get the pathname
+        const urlObject = new URL(getUrlResult.url);
+        const pathname = urlObject.pathname;
+        const imageUrl = `https://iqdsdatabucket.s3.amazonaws.com${pathname}`;
+
+        setLatestImageUrl(imageUrl); // Set the image URL for the modal
+        setLoading(false); // Hide loader right before showing the modal
+        setModalOpen(true); // Open the modal after setting the image URL
+      } else {
+        console.log("No items found in the bucket.");
+        setLoading(false); // Ensure to hide loader if no items are found
+      }
+    } catch (error) {
+      console.error("Error getting the most recent item's URL:", error);
+      setLoading(false); // Ensure to hide loader on error
+    }
+  };
+
+  const handleManualCaptureClick = async () => {
+    setLoading(true); // Show loader immediately on button click
+    await getTodo(setAlert, getMostRecentItemImageUrl, setLoading);
+  };
+
+  const handleProductChange = (event) => {
+    setSelectedProduct(event.target.value);
+  };
 
   const handleDrawerOpen = () => {
     setOpen(true);
@@ -160,75 +261,185 @@ function MainPage() {
     setOpen(false);
   };
 
-  const createCharts = () => {
-    let pChartInstance = null;
-    let cChartInstance = null;
-    const pChartCanvas = document.getElementById("p-chart");
-    if (pChartInstance) {
-      pChartInstance.destroy();
-    }
-    pChartInstance = new Chart(pChartCanvas, {
-      type: "bar",
-      data: {
-        labels: ["Category A", "Category B", "Category C", "Category D"],
-        datasets: [
-          {
-            label: "Defects",
-            data: [10, 20, 5, 15],
-            backgroundColor: "rgba(255, 99, 132, 0.5)",
-            borderColor: "rgba(255, 99, 132, 1)",
-            borderWidth: 1,
-          },
-        ],
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-          },
-        },
-      },
+  const aggregateDataForCharts = (data) => {
+    const aggregatedData = data.reduce((acc, item) => {
+      const dateKey = `${item.Year}-${item.Month.toString().padStart(
+        2,
+        "0"
+      )}-${item.Day.toString().padStart(2, "0")}`;
+      if (!acc[dateKey]) {
+        acc[dateKey] = { total: 0, good: 0, open: 0, dented: 0 };
+      }
+      acc[dateKey].total++;
+      if (item.Labels.includes("Dented")) acc[dateKey].dented++;
+      if (item.Labels.includes("Good")) acc[dateKey].good++;
+      if (item.Labels.includes("Open")) acc[dateKey].open++;
+      return acc;
+    }, {});
+
+    const chartData = Object.keys(aggregatedData).map((date) => {
+      const { total, good, open, dented } = aggregatedData[date];
+      return {
+        date,
+        proportionGood: good / total,
+        proportionOpen: open / total,
+        proportionDented: dented / total,
+        // Adding counts here
+        countGood: good,
+        countOpen: open,
+        countDented: dented,
+      };
     });
 
-    const cChartCanvas = document.getElementById("c-chart");
-    if (cChartInstance) {
-      cChartInstance.destroy();
-    }
-    cChartInstance = new Chart(cChartCanvas, {
-      type: "line",
-      data: {
-        labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-        datasets: [
-          {
-            label: "Defects",
-            data: [5, 8, 3, 6],
-            fill: false,
-            borderColor: "rgba(54, 162, 235, 1)",
-            tension: 0.1,
-          },
-        ],
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-          },
-        },
-      },
-    });
+    console.log(chartData);
+
+    return chartData;
   };
 
-  useEffect(() => {
-    createCharts();
-  }, []);
+  const fetchDynamoDBData = useCallback(async () => {
+    console.log("Fetching data from DynamoDB...");
+    try {
+      const operation = await get({
+        apiName: "qadetection",
+        path: "/cans/data",
+      });
+
+      const response = await operation.response;
+      const reader = response.body.getReader();
+      let responseBody = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        responseBody += new TextDecoder().decode(value);
+      }
+
+      console.log("DynamoDB JSON data as string:", responseBody);
+      const parsedData = JSON.parse(responseBody);
+      return aggregateDataForCharts(parsedData);
+    } catch (error) {
+      console.error("Error fetching data from DynamoDB:", error);
+      return null; // Handle the error appropriately
+    }
+  }, []); // Add any dependencies here if `fetchDynamoDBData` depends on props or state
 
   useEffect(() => {
-    if (alert.message) {
-      setTimeout(() => {
-        setAlert({ message: null, type: null });
-      }, 3000);
+    if (
+      selectedProduct === "cokecan" &&
+      pChartRef.current &&
+      cChartRef.current
+    ) {
+      const ctxP = pChartRef.current.getContext("2d");
+      const ctxC = cChartRef.current.getContext("2d");
+
+      if (ctxP && ctxC) {
+        // Initialize and update charts only if the context is available
+        // P-chart for proportions
+        const pChart = new Chart(ctxP, {
+          type: "line", // Keep as line chart
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: "Proportion of Good",
+                data: [],
+                borderColor: "green",
+                backgroundColor: "green",
+              },
+              {
+                label: "Proportion of Open",
+                data: [],
+                borderColor: "orange",
+                backgroundColor: "orange",
+              },
+              {
+                label: "Proportion of Dented",
+                data: [],
+                borderColor: "red",
+                backgroundColor: "red",
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        // C-chart for counts
+        const cChart = new Chart(ctxC, {
+          type: "bar", // Change to bar chart
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: "Count of Good Cans",
+                data: [],
+                backgroundColor: "green",
+              },
+              {
+                label: "Count of Open Cans",
+                data: [],
+                backgroundColor: "orange",
+              },
+              {
+                label: "Count of Dented Cans",
+                data: [],
+                backgroundColor: "red",
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        // Fetch data and update charts
+        async function fetchDataAndRenderCharts() {
+          const chartData = await fetchDynamoDBData();
+          if (chartData) {
+            pChart.data.labels = chartData.map((data) => data.date);
+            pChart.data.datasets[0].data = chartData.map(
+              (data) => data.proportionGood
+            );
+            pChart.data.datasets[1].data = chartData.map(
+              (data) => data.proportionOpen
+            );
+            pChart.data.datasets[2].data = chartData.map(
+              (data) => data.proportionDented
+            );
+            pChart.update();
+
+            cChart.data.labels = chartData.map((data) => data.date);
+            cChart.data.datasets[0].data = chartData.map(
+              (data) => data.countGood
+            );
+            cChart.data.datasets[1].data = chartData.map(
+              (data) => data.countOpen
+            );
+            cChart.data.datasets[2].data = chartData.map(
+              (data) => data.countDented
+            );
+            cChart.update();
+          }
+        }
+
+        fetchDataAndRenderCharts();
+
+        return () => {
+          pChart.destroy();
+          cChart.destroy();
+        };
+      }
     }
-  }, [alert.message]);
+  }, [selectedProduct, fetchDynamoDBData]);
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -329,40 +540,98 @@ function MainPage() {
         {currentPage === "Main Page" && (
           <Box>
             <Typography variant="h4">Main Page Content</Typography>
-            <ChartsContainer>
-              <div style={{ marginRight: "20px" }}>
-                <Typography variant="h6" marginTop="20px">
-                  P-Chart
-                </Typography>
-                <canvas id="p-chart" width="600" height="300"></canvas>
-              </div>
-              <div style={{ marginLeft: "20px" }}>
-                <Typography variant="h6" marginTop="20px">
-                  C-Chart
-                </Typography>
-                <canvas id="c-chart" width="600" height="300"></canvas>
-              </div>
-            </ChartsContainer>
           </Box>
         )}
         {currentPage === "Products" && (
-          <Typography variant="h4">Products Page Content</Typography>
+          <Box>
+            <Typography variant="h4">Products Page Content</Typography>
+            <SelectField
+              label="Products"
+              descriptiveText="Select a product"
+              marginTop="20px"
+              onChange={handleProductChange}
+              value={selectedProduct}
+              style={{ width: "500px" }} // Set a fixed width
+            >
+              <option value="other">Other</option>
+              <option value="cokecan">Coke Can</option>
+
+              {/* Add other options as needed */}
+            </SelectField>
+
+            {selectedProduct === "cokecan" && (
+              <ChartsContainer>
+                <div style={{ marginRight: "20px" }}>
+                  <Typography variant="h6" marginTop="20px">
+                    P-Chart
+                  </Typography>
+                  <canvas ref={pChartRef} width="600" height="300"></canvas>
+                </div>
+                <div style={{ marginLeft: "20px" }}>
+                  <Typography variant="h6" marginTop="20px">
+                    C-Chart
+                  </Typography>
+                  <canvas ref={cChartRef} width="600" height="300"></canvas>
+                </div>
+              </ChartsContainer>
+            )}
+          </Box>
         )}
         {currentPage === "Capture" && (
           <Box>
             <Typography variant="h4">Capture Page Content</Typography>
             <Button
-              onClick={() => getTodo(setAlert)}
+              onClick={handleManualCaptureClick} // Use the new click handler
               style={{ marginTop: "20px" }}
             >
               Manual Capture
             </Button>
             {alert.message && (
-              <Alert severity={alert.type}>{alert.message}</Alert> // Use `severity` instead of `variation` for MUI Alert
+              <Alert severity={alert.type}>{alert.message}</Alert>
             )}
           </Box>
         )}
       </Main>
+
+      {/* Modal for displaying the latest image */}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{ timeout: 500 }}
+      >
+        <Fade in={modalOpen}>
+          <Box
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "auto",
+              maxWidth: "90%",
+              maxHeight: "90%",
+              backgroundColor: "white",
+              border: "2px solid #000",
+              boxShadow: "24",
+              padding: "16px",
+              overflowY: "auto",
+            }}
+          >
+            <img
+              src={latestImageUrl}
+              alt="Latest Capture"
+              style={{ width: "100%", maxHeight: "100%" }}
+            />
+          </Box>
+        </Fade>
+      </Modal>
+
+      {loading && (
+        <LoaderContainer>
+          <Loader />
+        </LoaderContainer>
+      )}
     </Box>
   );
 }

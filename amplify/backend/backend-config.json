@@ -42,6 +42,11 @@
     }
   },
   "function": {
+    "qacansdata": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "qadetection306b72d4": {
       "build": true,
       "providerPlugin": "awscloudformation",
@@ -54,6 +59,22 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_qacansdata_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "qacansdata"
+        }
+      ]
+    },
+    "AMPLIFY_function_qacansdata_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "qacansdata"
+        }
+      ]
+    },
     "AMPLIFY_function_qadetection306b72d4_deploymentBucketName": {
       "usedBy": [
         {
@@ -85,7 +106,76 @@
           "resourceName": "qafunction"
         }
       ]
+    },
+    "AMPLIFY_storage_IQDSClassificationResults_arn": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "IQDSClassificationResults"
+        }
+      ]
+    },
+    "AMPLIFY_storage_IQDSClassificationResults_partitionKeyName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "IQDSClassificationResults"
+        }
+      ]
+    },
+    "AMPLIFY_storage_IQDSClassificationResults_partitionKeyType": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "IQDSClassificationResults"
+        }
+      ]
+    },
+    "AMPLIFY_storage_IQDSClassificationResults_region": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "IQDSClassificationResults"
+        }
+      ]
+    },
+    "AMPLIFY_storage_IQDSClassificationResults_tableName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "IQDSClassificationResults"
+        }
+      ]
+    },
+    "AMPLIFY_storage_qadetection01ea775e_bucketName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "qadetection01ea775e"
+        }
+      ]
+    },
+    "AMPLIFY_storage_qadetection01ea775e_region": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "qadetection01ea775e"
+        }
+      ]
     }
   },
-  "storage": {}
+  "storage": {
+    "IQDSClassificationResults": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "serviceType": "imported"
+    },
+    "qadetection01ea775e": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3",
+      "serviceType": "imported"
+    }
+  }
 }

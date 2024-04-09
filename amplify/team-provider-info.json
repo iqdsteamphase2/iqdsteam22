@@ -23,10 +23,27 @@
         "qadetection306b72d4": {
           "deploymentBucketName": "amplify-qadetection-dev-175854-deployment",
           "s3Key": "amplify-builds/qadetection306b72d4-6657454948635941575a-build.zip"
+        },
+        "qacansdata": {
+          "deploymentBucketName": "amplify-qadetection-dev-175854-deployment",
+          "s3Key": "amplify-builds/qacansdata-41317a36657772426951-build.zip"
         }
       },
       "api": {
         "qadetection": {}
+      },
+      "storage": {
+        "qadetection01ea775e": {
+          "bucketName": "iqdsdatabucket",
+          "region": "us-east-1"
+        },
+        "IQDSClassificationResults": {
+          "tableName": "IQDSClassificationResults",
+          "region": "us-east-1",
+          "arn": "arn:aws:dynamodb:us-east-1:590183885730:table/IQDSClassificationResults",
+          "partitionKeyName": "ImageName",
+          "partitionKeyType": "S"
+        }
       }
     }
   }
