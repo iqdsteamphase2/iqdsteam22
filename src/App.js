@@ -141,7 +141,10 @@ async function getTodo(setAlert, getMostRecentItemImageUrl, setLoading) {
     const response = await operation.response;
 
     if (response.statusCode === 200) {
-      setAlert({ message: "Capture successful!", type: "success" });
+      setAlert({
+        message: "Capture successful! Fetching image...",
+        type: "success",
+      });
 
       setTimeout(async () => {
         await getMostRecentItemImageUrl(setLoading);
@@ -174,11 +177,11 @@ const DrawerHeader = styled("div")(({ theme }) => ({
 }));
 
 const LoaderContainer = styled("div")({
-  position: "fixed", // Use fixed to cover the entire screen
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
+  position: "absolute", // or 'fixed'
+  top: "50%", // Center vertically or adjust as needed
+  left: "50%", // Center horizontally or adjust as needed
+  transform: "translate(-50%, -50%)",
+  zIndex: 1000, // Make sure it is on top of other content
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
@@ -225,6 +228,10 @@ function MainPage() {
         setLatestImageUrl(imageUrl); // Set the image URL for the modal
         setLoading(false); // Hide loader right before showing the modal
         setModalOpen(true); // Open the modal after setting the image URL
+        setAlert({
+          message: `Fetching labels...`,
+          type: "default",
+        });
       } else {
         console.log("No items found in the bucket.");
         setLoading(false); // Ensure to hide loader if no items are found
@@ -236,8 +243,41 @@ function MainPage() {
   };
 
   const handleManualCaptureClick = async () => {
+    console.log("Manual capture started, setting loading true");
     setLoading(true); // Show loader immediately on button click
-    await getTodo(setAlert, getMostRecentItemImageUrl, setLoading);
+    try {
+      await getTodo(setAlert, getMostRecentItemImageUrl, setLoading); // Get the latest image URL from S3
+      console.log("getTodo completed, should still be loading");
+      // Reactivate loader for fetching labels (if needed, seems redundant)
+      setLoading(true);
+
+      setTimeout(async () => {
+        console.log("Fetching labels...");
+        const mostRecentData = await aggregateDataForModal(); // Get the latest labels from DynamoDB after a delay
+        if (mostRecentData) {
+          console.log("Labels fetched, setting alert");
+          setAlert({
+            message: `Labels: ${mostRecentData.labels}`,
+            type: "info",
+          }); // Update the alert with the labels information
+        } else {
+          console.log("No label data, setting error alert");
+          setAlert({
+            message: "No recent label data available.",
+            type: "error",
+          });
+        }
+        console.log("Label fetch operation complete, setting loading false");
+        setLoading(false); // Hide loader after fetching labels
+      }, 15000); // Delay for 15 seconds
+    } catch (error) {
+      console.error("Error during manual capture:", error);
+      setAlert({
+        message: "Error during capture process.",
+        type: "error",
+      });
+      setLoading(false);
+    }
   };
 
   const handleProductChange = (event) => {
@@ -260,6 +300,78 @@ function MainPage() {
     setCurrentPage(page);
     setOpen(false);
   };
+
+  const aggregateDataForModal = useCallback(async () => {
+    console.log("Fetching most recent item from DynamoDB...");
+    try {
+      const operation = await get({
+        apiName: "qadetection",
+        path: "/cans/data",
+      });
+
+      const response = await operation.response;
+      const reader = response.body.getReader();
+      let responseBody = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        responseBody += new TextDecoder().decode(value);
+      }
+
+      const data = JSON.parse(responseBody);
+      if (data.length > 0) {
+        const mostRecentItem = data.reduce((a, b) => {
+          const dateTimeA = new Date(
+            `${a.Year}-${a.Month.toString().padStart(
+              2,
+              "0"
+            )}-${a.Day.toString().padStart(
+              2,
+              "0"
+            )}T${a.Hour.toString().padStart(
+              2,
+              "0"
+            )}:${a.Minute.toString().padStart(
+              2,
+              "0"
+            )}:${a.Second.toString().padStart(2, "0")}`
+          );
+          const dateTimeB = new Date(
+            `${b.Year}-${b.Month.toString().padStart(
+              2,
+              "0"
+            )}-${b.Day.toString().padStart(
+              2,
+              "0"
+            )}T${b.Hour.toString().padStart(
+              2,
+              "0"
+            )}:${b.Minute.toString().padStart(
+              2,
+              "0"
+            )}:${b.Second.toString().padStart(2, "0")}`
+          );
+          return dateTimeA > dateTimeB ? a : b;
+        });
+
+        console.log("Most recent item:", mostRecentItem);
+        return {
+          imageUrl: mostRecentItem.URL,
+          labels: mostRecentItem.Labels.join(", "), // Join the labels for display
+        };
+      } else {
+        console.log("No items found.");
+        return null;
+      }
+    } catch (error) {
+      console.error(
+        "Error fetching the most recent item's data from DynamoDB:",
+        error
+      );
+      return null;
+    }
+  }, []);
 
   const aggregateDataForCharts = (data) => {
     const aggregatedData = data.reduce((acc, item) => {
@@ -625,6 +737,12 @@ function MainPage() {
               alt="Latest Capture"
               style={{ width: "100%", maxHeight: "100%" }}
             />
+            {loading && <Loader />}
+            {alert.message && (
+              <Alert severity={alert.type} style={{ marginTop: "20px" }}>
+                {alert.message}
+              </Alert>
+            )}
           </Box>
         </Fade>
       </Modal>
