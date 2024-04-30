@@ -5,8 +5,7 @@ backend:
       commands:
         - echo "Installing pipenv and virtualenv"
         - pip install --user pipenv virtualenv
-        - echo 'export PATH=$PATH:$HOME/.local/bin' >> $BASH_ENV
-        - source $BASH_ENV
+        - export PATH="$PATH:/root/.local/bin"
         - echo "Installation complete. PATH is $PATH. Proceeding with the build."
         - "# Execute Amplify CLI with the helper script"
         - amplifyPush --simple
