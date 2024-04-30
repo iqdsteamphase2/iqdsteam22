@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 
 import { withAuthenticator } from "@aws-amplify/ui-react";
 import { signOut } from "aws-amplify/auth";
-import { get } from "aws-amplify/api";
+import { get, post } from "aws-amplify/api";
 import "@aws-amplify/ui-react/styles.css";
 import Chart from "chart.js/auto";
 import logoImage from "./assets/utdlogo.png";
@@ -11,6 +11,7 @@ import { list as listS3Objects, getUrl } from "@aws-amplify/storage";
 import { Amplify } from "aws-amplify";
 import { Modal, Backdrop, Fade } from "@mui/material";
 import { Loader, SelectField } from "@aws-amplify/ui-react";
+import { getCurrentUser } from "aws-amplify/auth";
 
 import { styled, useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
@@ -36,18 +37,6 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { Alert } from "@mui/material";
 import { Button } from "@aws-amplify/ui-react";
 import amplifyconfig from "./amplifyconfiguration.json";
-
-Amplify.configure(amplifyconfig, {
-  Storage: {
-    S3: {
-      prefixResolver: async ({ accessLevel, targetIdentityId }) => {
-        if (accessLevel === "guest") {
-          return "unpredicted/";
-        }
-      },
-    },
-  },
-});
 
 const myTheme = {
   name: "my-orange-theme",
@@ -130,12 +119,37 @@ const AppBar = styled(MuiAppBar, {
   }),
 }));
 
-async function getTodo(setAlert, getMostRecentItemImageUrl, setLoading) {
+async function currentAuthenticatedUser() {
+  try {
+    const { username, userId, signInDetails } = await getCurrentUser();
+    // Return the user details instead of just logging them
+    return { username, userId, signInDetails };
+  } catch (err) {
+    console.error("Failed to fetch user details:", err);
+    return null; // Return null or throw an error based on how you want to handle this failure
+  }
+}
+
+async function getTodo(
+  setAlert,
+  getMostRecentItemImageUrl,
+  setLoading,
+  clientName,
+  productName
+) {
+  console.log(clientName);
+  console.log(productName);
   setLoading(true); // Show loader at the beginning of the request
   try {
     const operation = await get({
       apiName: "qadetection",
       path: "/cans",
+      options: {
+        queryParams: {
+          clientName: clientName,
+          productName: productName,
+        },
+      },
     });
 
     const response = await operation.response;
@@ -190,12 +204,13 @@ const LoaderContainer = styled("div")({
 function MainPage() {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState("Main Page");
+  const [currentPage, setCurrentPage] = useState("Dashboard");
   const [alert, setAlert] = useState({ message: null, type: null });
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [latestImageUrl, setLatestImageUrl] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState("CokeCans");
+  const [triggerRefresh, setTriggerRefresh] = useState(false);
 
   const pChartRef = useRef(null);
   const cChartRef = useRef(null);
@@ -245,8 +260,47 @@ function MainPage() {
   const handleManualCaptureClick = async () => {
     console.log("Manual capture started, setting loading true");
     setLoading(true); // Show loader immediately on button click
+
+    // Retrieve user details asynchronously
+    const user = await currentAuthenticatedUser();
+    if (!user) {
+      console.error(
+        "User not authenticated or failed to retrieve user details."
+      );
+      setAlert({
+        message: "Authentication error or unable to retrieve user details.",
+        type: "error",
+      });
+      setLoading(false);
+      return; // Stop execution if no user details are available
+    }
+
+    const clientName = "Team2TestingUser"; //Hardcoded for now. change to 'user.username' for current authenticated user (S3 configuration needed for this)
+    const productName = selectedProduct;
+
+    Amplify.configure(amplifyconfig, {
+      Storage: {
+        S3: {
+          prefixResolver: async ({ accessLevel, targetIdentityId }) => {
+            if (accessLevel === "guest") {
+              return clientName + "/" + selectedProduct + "/unpredicted/";
+            }
+          },
+        },
+      },
+    });
+
+    console.log(clientName);
+    console.log(productName);
+
     try {
-      await getTodo(setAlert, getMostRecentItemImageUrl, setLoading); // Get the latest image URL from S3
+      await getTodo(
+        setAlert,
+        getMostRecentItemImageUrl,
+        setLoading,
+        clientName,
+        productName
+      ); // Get the latest image URL from S3
       console.log("getTodo completed, should still be loading");
       // Reactivate loader for fetching labels (if needed, seems redundant)
       setLoading(true);
@@ -260,6 +314,7 @@ function MainPage() {
             message: `Labels: ${mostRecentData.labels}`,
             type: "info",
           }); // Update the alert with the labels information
+          setTriggerRefresh((prev) => !prev);
         } else {
           console.log("No label data, setting error alert");
           setAlert({
@@ -302,11 +357,38 @@ function MainPage() {
   };
 
   const aggregateDataForModal = useCallback(async () => {
+    // Retrieve user details asynchronously
+    const user = await currentAuthenticatedUser();
+    if (!user) {
+      console.error(
+        "User not authenticated or failed to retrieve user details."
+      );
+      setAlert({
+        message: "Authentication error or unable to retrieve user details.",
+        type: "error",
+      });
+      setLoading(false);
+      return; // Stop execution if no user details are available
+    }
+
+    const clientName = "Team2TestingUser"; //Hardcoded for now. change to 'user.username' for current authenticated user (S3 configuration needed for this)
+    const productName = selectedProduct;
     console.log("Fetching most recent item from DynamoDB...");
+
+    console.log(
+      "PRODUCT RIGHT BEFORE FETCHING MOST RECENT ITEM IS " + productName
+    );
+
     try {
       const operation = await get({
         apiName: "qadetection",
         path: "/cans/data",
+        options: {
+          queryParams: {
+            clientName: clientName,
+            productName: productName,
+          },
+        },
       });
 
       const response = await operation.response;
@@ -371,7 +453,7 @@ function MainPage() {
       );
       return null;
     }
-  }, []);
+  }, [selectedProduct]);
 
   const aggregateDataForCharts = (data) => {
     const aggregatedData = data.reduce((acc, item) => {
@@ -380,10 +462,11 @@ function MainPage() {
         "0"
       )}-${item.Day.toString().padStart(2, "0")}`;
       if (!acc[dateKey]) {
-        acc[dateKey] = { total: 0, good: 0, open: 0, dented: 0 };
+        acc[dateKey] = { total: 0, good: 0, bad: 0, open: 0, dented: 0 };
       }
       acc[dateKey].total++;
       if (item.Labels.includes("Dented")) acc[dateKey].dented++;
+      if (item.Labels.includes("Bad")) acc[dateKey].bad++;
       if (item.Labels.includes("Good")) acc[dateKey].good++;
       if (item.Labels.includes("Open")) acc[dateKey].open++;
       return acc;
@@ -392,14 +475,16 @@ function MainPage() {
     const chartData = Object.keys(aggregatedData)
       .sort((a, b) => new Date(a) - new Date(b)) // Sort the dates chronologically
       .map((date) => {
-        const { total, good, open, dented } = aggregatedData[date];
+        const { total, good, bad, open, dented } = aggregatedData[date];
         return {
           date,
           proportionGood: good / total,
+          proportionBad: bad / total,
           proportionOpen: open / total,
           proportionDented: dented / total,
           // Adding counts here
           countGood: good,
+          countBad: bad,
           countOpen: open,
           countDented: dented,
         };
@@ -411,11 +496,51 @@ function MainPage() {
   };
 
   const fetchDynamoDBData = useCallback(async () => {
+    console.log(selectedProduct);
     console.log("Fetching data from DynamoDB...");
+
+    // Retrieve user details asynchronously
+    const user = await currentAuthenticatedUser();
+    if (!user) {
+      console.error(
+        "User not authenticated or failed to retrieve user details."
+      );
+      setAlert({
+        message: "Authentication error or unable to retrieve user details.",
+        type: "error",
+      });
+      setLoading(false);
+      return; // Stop execution if no user details are available
+    }
+
+    const clientName = "Team2TestingUser"; //Hardcoded for now. change to 'user.username' for current authenticated user (S3 configuration needed for this)
+    const productName = selectedProduct;
+
+    Amplify.configure(amplifyconfig, {
+      Storage: {
+        S3: {
+          prefixResolver: async ({ accessLevel, targetIdentityId }) => {
+            if (accessLevel === "guest") {
+              return clientName + "/" + selectedProduct + "/unpredicted/";
+            }
+          },
+        },
+      },
+    });
+
+    console.log(clientName);
+    console.log(productName);
+
     try {
       const operation = await get({
         apiName: "qadetection",
         path: "/cans/data",
+        options: {
+          queryParams: {
+            clientName: clientName,
+            productName: productName,
+          },
+        },
       });
 
       const response = await operation.response;
@@ -435,11 +560,11 @@ function MainPage() {
       console.error("Error fetching data from DynamoDB:", error);
       return null; // Handle the error appropriately
     }
-  }, []); // Add any dependencies here if `fetchDynamoDBData` depends on props or state
+  }, [selectedProduct]); // Add any dependencies here if `fetchDynamoDBData` depends on props or state
 
   useEffect(() => {
     if (
-      selectedProduct === "cokecan" &&
+      selectedProduct === "CokeCans" &&
       pChartRef.current &&
       cChartRef.current
     ) {
@@ -547,13 +672,114 @@ function MainPage() {
 
         fetchDataAndRenderCharts();
 
+        // Cleanup function
         return () => {
-          pChart.destroy();
-          cChart.destroy();
+          if (pChart) pChart.destroy();
+          if (cChart) cChart.destroy();
         };
       }
     }
-  }, [selectedProduct, fetchDynamoDBData]);
+
+    if (
+      selectedProduct === "Pennies" &&
+      pChartRef.current &&
+      cChartRef.current
+    ) {
+      const ctxP = pChartRef.current.getContext("2d");
+      const ctxC = cChartRef.current.getContext("2d");
+
+      if (ctxP && ctxC) {
+        // Initialize and update charts only if the context is available
+        // P-chart for proportions
+        const pChart = new Chart(ctxP, {
+          type: "line", // Keep as line chart
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: "Proportion of Good",
+                data: [],
+                borderColor: "green",
+                backgroundColor: "green",
+              },
+              {
+                label: "Proportion of Bad",
+                data: [],
+                borderColor: "red",
+                backgroundColor: "red",
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        // C-chart for counts
+        const cChart = new Chart(ctxC, {
+          type: "bar", // Change to bar chart
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: "Count of Good",
+                data: [],
+                backgroundColor: "green",
+              },
+              {
+                label: "Count of Bad",
+                data: [],
+                backgroundColor: "red",
+              },
+            ],
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        // Fetch data and update charts
+        async function fetchDataAndRenderCharts() {
+          const chartData = await fetchDynamoDBData();
+          if (chartData) {
+            pChart.data.labels = chartData.map((data) => data.date);
+            pChart.data.datasets[0].data = chartData.map(
+              (data) => data.proportionGood
+            );
+            pChart.data.datasets[1].data = chartData.map(
+              (data) => data.proportionBad
+            );
+            pChart.update();
+
+            cChart.data.labels = chartData.map((data) => data.date);
+            cChart.data.datasets[0].data = chartData.map(
+              (data) => data.countGood
+            );
+            cChart.data.datasets[1].data = chartData.map(
+              (data) => data.countBad
+            );
+            cChart.update();
+          }
+        }
+
+        fetchDataAndRenderCharts();
+
+        // Cleanup function
+        return () => {
+          if (pChart) pChart.destroy();
+          if (cChart) cChart.destroy();
+        };
+      }
+    }
+  }, [selectedProduct, fetchDynamoDBData, triggerRefresh]);
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -615,7 +841,7 @@ function MainPage() {
           </IconButton>
         </DrawerHeader>
         <List>
-          {["Main Page", "Products", "Capture"].map((text, index) => (
+          {["Dashboard"].map((text, index) => (
             <ListItem
               key={text}
               disablePadding
@@ -625,8 +851,8 @@ function MainPage() {
             >
               <ListItemButton>
                 <ListItemIcon>
-                  {text === "Main Page" ? (
-                    <HomeIcon />
+                  {text === "Dashboard" ? (
+                    <CategoryIcon />
                   ) : index % 2 === 0 ? (
                     <CameraAltIcon />
                   ) : (
@@ -656,9 +882,8 @@ function MainPage() {
             <Typography variant="h4">Main Page Content</Typography>
           </Box>
         )}
-        {currentPage === "Products" && (
+        {currentPage === "Dashboard" && (
           <Box>
-            <Typography variant="h4">Products Page Content</Typography>
             <SelectField
               label="Products"
               descriptiveText="Select a product"
@@ -667,13 +892,22 @@ function MainPage() {
               value={selectedProduct}
               style={{ width: "500px" }} // Set a fixed width
             >
-              <option value="other">Other</option>
-              <option value="cokecan">Coke Can</option>
+              <option value="CokeCans">Coke Can</option>
+              <option value="Pennies">Pennies</option>
 
               {/* Add other options as needed */}
             </SelectField>
 
-            {selectedProduct === "cokecan" && (
+            {selectedProduct !== null && (
+              <Button
+                onClick={handleManualCaptureClick} // Use the new click handler
+                style={{ marginTop: "20px" }}
+              >
+                Manual Capture
+              </Button>
+            )}
+
+            {selectedProduct !== null && (
               <ChartsContainer>
                 <div style={{ marginRight: "20px" }}>
                   <Typography variant="h6" marginTop="20px">
@@ -688,20 +922,6 @@ function MainPage() {
                   <canvas ref={cChartRef} width="600" height="300"></canvas>
                 </div>
               </ChartsContainer>
-            )}
-          </Box>
-        )}
-        {currentPage === "Capture" && (
-          <Box>
-            <Typography variant="h4">Capture Page Content</Typography>
-            <Button
-              onClick={handleManualCaptureClick} // Use the new click handler
-              style={{ marginTop: "20px" }}
-            >
-              Manual Capture
-            </Button>
-            {alert.message && (
-              <Alert severity={alert.type}>{alert.message}</Alert>
             )}
           </Box>
         )}

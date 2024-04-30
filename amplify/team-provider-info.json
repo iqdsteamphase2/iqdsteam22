@@ -22,11 +22,11 @@
         },
         "qadetection306b72d4": {
           "deploymentBucketName": "amplify-qadetection-dev-175854-deployment",
-          "s3Key": "amplify-builds/qadetection306b72d4-6657454948635941575a-build.zip"
+          "s3Key": "amplify-builds/qadetection306b72d4-69435455354c73327a54-build.zip"
         },
         "qacansdata": {
           "deploymentBucketName": "amplify-qadetection-dev-175854-deployment",
-          "s3Key": "amplify-builds/qacansdata-41317a36657772426951-build.zip"
+          "s3Key": "amplify-builds/qacansdata-6d795455565430674d4d-build.zip"
         }
       },
       "api": {

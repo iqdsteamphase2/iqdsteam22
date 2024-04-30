@@ -2,9 +2,14 @@ import json
 import boto3
 
 def lambda_handler(event, context):
+    clientName = event.get("queryStringParameters", {}).get("clientName")
+    productName = event.get("queryStringParameters", {}).get("productName")
+
     # Initialize DynamoDB client
     dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table('IQDSClassificationResults')
+    table = dynamodb.Table(clientName+"-"+productName+"-Results")
+
+    print(table)
 
     # Query DynamoDB table
     response = table.scan()

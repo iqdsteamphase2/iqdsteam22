@@ -11,26 +11,23 @@ def lambda_handler(event, context):
     username = 'rnibu'
     password = 'securityfirst'
 
-    try:
-        ssh.connect(server, username=username, password=password, port=port)
-        ssh.exec_command('python ~/Desktop/IQDS/time/timelapse/onepicturenew.py')
-
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',  # This should be restricted to your domain in production
-                'Access-Control-Allow-Credentials': True
-            },
-            'body': json.dumps('Hello from Lambda!')
-        }
-    except Exception as e:
-        return {
-            'statusCode': 500,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',  # This should be restricted to your domain in production
-                'Access-Control-Allow-Credentials': True
-            },
-            'body': json.dumps('Error: {}'.format(e))
-        }
-    finally:
-        ssh.close()
+    ssh.connect(server, username=username, password=password, port=port)
+    
+    clientName = event.get("queryStringParameters", {}).get("clientName")
+    productName = event.get("queryStringParameters", {}).get("productName")
+    
+    command = 'python ~/Desktop/IQDS/time/timelapse/onepicturenew.py'+" "+clientName+" "+productName
+    print(command)
+    ssh.exec_command(command)
+    
+    # Add CORS headers to the response
+    headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'  # Change * to specific origin if needed
+    }
+    
+    return {
+        'statusCode': 200,
+        'headers': headers,
+        'body': json.dumps('Hello from Lambda!')
+    }
