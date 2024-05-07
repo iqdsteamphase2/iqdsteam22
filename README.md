@@ -1,70 +1,86 @@
-# Getting Started with Create React App
+# Setting up IQDSTEAM22 Environment
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This guide will walk you through setting up the IQDSTEAM22 environment. Follow these steps carefully to ensure a smooth setup process.
 
-## Available Scripts
+## Prerequisites
 
-In the project directory, you can run:
+Before you begin, make sure you have the following installed on your system:
 
-### `npm start`
+- [Node.js](https://nodejs.org/en/download)
+- [Python](https://www.python.org/downloads/) (added to PATH)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Installation Steps
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+1. **Install Node.js:**
 
-### `npm test`
+   Download and install Node.js from the [official website](https://nodejs.org/en/download) according to your operating system.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. **Install Python:**
 
-### `npm run build`
+   Download and install Python from the [official website](https://www.python.org/downloads/). Make sure to add Python to your system's PATH during installation.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+3. **Install React Scripts:**
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+   Open your terminal and navigate to the `IQDSTEAM22-MASTER` directory.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+   ```bash
+   npm install react-scripts
+   ```
 
-### `npm run eject`
+   No need to audit or fix any problems that may arise during installation.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+4. **Install AWS Amplify CLI:**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+   ```bash
+   npm install -g @aws-amplify/cli
+   ```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+5. **Configure AWS Amplify:**
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+   Run the following command:
 
-## Learn More
+   ```bash
+   amplify pull
+   ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+   Follow the prompts:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+   - Select "AWS access keys" as the authentication method.
+   - Enter the provided access key ID and secret access key:
 
-### Code Splitting
+     - Access Key ID: (provided in project hand off)
+     - Secret Access Key: (provided in project hand off)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+   - Choose the region as `us-east-1`.
+   - Select the app you're working on (`QAdetection`).
+   - Choose your default editor (e.g., Visual Studio Code).
 
-### Analyzing the Bundle Size
+6. **Initialize Backend Environment:**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+   After configuring AWS Amplify, the backend environment 'dev' will be found and initialized. Follow any additional prompts as needed.
 
-### Making a Progressive Web App
+7. **Specify Project Details:**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+   Provide information about your project:
 
-### Advanced Configuration
+   - Select the type of app you're building (e.g., JavaScript).
+   - Specify the source directory path (`src`).
+   - Specify the distribution directory path (`build`).
+   - Provide the build command (`npm run-script build`).
+   - Provide the start command (`npm run-script start`).
+   - If you don't plan on modifying the backend, choose "No" when prompted.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+8. **Start the Application:**
 
-### Deployment
+   Finally, start the application using the following command:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+   ```bash
+   npm start
+   ```
 
-### `npm run build` fails to minify
+   This command will start the development server and open the application in your default web browser.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Additional Notes
+
+- Make sure to follow each step carefully to ensure proper setup.
+- If you encounter any issues during setup, feel free to reach out for assistance.
