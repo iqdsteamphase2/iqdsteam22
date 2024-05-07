@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 
 import { withAuthenticator } from "@aws-amplify/ui-react";
 import { signOut } from "aws-amplify/auth";
-import { get, post } from "aws-amplify/api";
+import { get } from "aws-amplify/api";
 import "@aws-amplify/ui-react/styles.css";
 import Chart from "chart.js/auto";
 import logoImage from "./assets/utdlogo.png";
@@ -11,13 +11,11 @@ import { list as listS3Objects, getUrl } from "@aws-amplify/storage";
 import { Amplify } from "aws-amplify";
 import { Modal, Backdrop, Fade } from "@mui/material";
 import { Loader, SelectField } from "@aws-amplify/ui-react";
-import { getCurrentUser } from "aws-amplify/auth";
 
-import { styled, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import CssBaseline from "@mui/material/CssBaseline";
-import MuiAppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import List from "@mui/material/List";
 import Typography from "@mui/material/Typography";
@@ -32,176 +30,23 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CategoryIcon from "@mui/icons-material/Category";
-import HomeIcon from "@mui/icons-material/Home";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import { Alert } from "@mui/material";
 import { Button } from "@aws-amplify/ui-react";
 import amplifyconfig from "./amplifyconfiguration.json";
-
-const myTheme = {
-  name: "my-orange-theme",
-  tokens: {
-    components: {
-      button: {
-        primary: {
-          backgroundColor: {
-            value: "#ff7f50",
-          },
-        },
-      },
-      heading: {
-        level1: {
-          fontSize: {
-            value: "2rem",
-          },
-        },
-      },
-      fieldcontrol: {
-        paddingInline: {
-          value: "1rem",
-        },
-      },
-    },
-  },
-};
-
-const drawerWidth = 240;
-
-const Main = styled("main", { shouldForwardProp: (prop) => prop !== "open" })(
-  ({ theme, open }) => ({
-    display: "flex",
-    flexGrow: 1,
-    padding: theme.spacing(3),
-    transition: theme.transitions.create("margin", {
-      easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
-    marginLeft: `-${drawerWidth}px`,
-    ...(open && {
-      transition: theme.transitions.create("margin", {
-        easing: theme.transitions.easing.easeOut,
-        duration: theme.transitions.duration.enteringScreen,
-      }),
-      marginLeft: 0,
-    }),
-    "& canvas": {
-      width: "100%",
-      height: "auto",
-      border: "1px solid #ddd",
-      borderRadius: "4px",
-    },
-    "& > *:not(:last-child)": {
-      marginRight: theme.spacing(2),
-    },
-  })
-);
-
-const ChartsContainer = styled("div")(({ theme }) => ({
-  display: "flex",
-  flexWrap: "wrap",
-  marginBottom: theme.spacing(2),
-}));
-
-const AppBar = styled(MuiAppBar, {
-  shouldForwardProp: (prop) => prop !== "open",
-})(({ theme, open }) => ({
-  transition: theme.transitions.create(["margin", "width"], {
-    easing: theme.transitions.easing.sharp,
-    duration: theme.transitions.duration.leavingScreen,
-  }),
-  ...(open && {
-    width: `calc(100% - ${drawerWidth}px)`,
-    marginLeft: `${drawerWidth}px`,
-    transition: theme.transitions.create(["margin", "width"], {
-      easing: theme.transitions.easing.easeOut,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
-  }),
-}));
-
-async function currentAuthenticatedUser() {
-  try {
-    const { username, userId, signInDetails } = await getCurrentUser();
-    // Return the user details instead of just logging them
-    return { username, userId, signInDetails };
-  } catch (err) {
-    console.error("Failed to fetch user details:", err);
-    return null; // Return null or throw an error based on how you want to handle this failure
-  }
-}
-
-async function getTodo(
-  setAlert,
-  getMostRecentItemImageUrl,
-  setLoading,
-  clientName,
-  productName
-) {
-  console.log(clientName);
-  console.log(productName);
-  setLoading(true); // Show loader at the beginning of the request
-  try {
-    const operation = await get({
-      apiName: "qadetection",
-      path: "/cans",
-      options: {
-        queryParams: {
-          clientName: clientName,
-          productName: productName,
-        },
-      },
-    });
-
-    const response = await operation.response;
-
-    if (response.statusCode === 200) {
-      setAlert({
-        message: "Capture successful! Fetching image...",
-        type: "success",
-      });
-
-      setTimeout(async () => {
-        await getMostRecentItemImageUrl(setLoading);
-      }, 6000);
-    } else {
-      console.error("Server responded with error: ", response);
-      setAlert({
-        message: `Capture failed: Server responded with status ${response.statusCode}`,
-        type: "error",
-      });
-      setLoading(false); // Hide loader on non-200 response
-    }
-  } catch (e) {
-    console.error("Error caught in getTodo:", e);
-    setAlert({
-      message: "Capture failed due to network or request error.",
-      type: "error",
-    });
-    setLoading(false); // Hide loader on catch
-  }
-}
-
-const DrawerHeader = styled("div")(({ theme }) => ({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: theme.spacing(0, 1),
-  ...theme.mixins.toolbar,
-  position: "relative",
-}));
-
-const LoaderContainer = styled("div")({
-  position: "absolute", // or 'fixed'
-  top: "50%", // Center vertically or adjust as needed
-  left: "50%", // Center horizontally or adjust as needed
-  transform: "translate(-50%, -50%)",
-  zIndex: 1000, // Make sure it is on top of other content
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-});
+import {
+  myTheme,
+  drawerWidth,
+  Main,
+  ChartsContainer,
+  AppBar,
+  DrawerHeader,
+  LoaderContainer,
+} from "./Themes";
+import { currentAuthenticatedUser, getTodo } from "./APIexports";
 
 function MainPage() {
+  // State and Ref declarations
   const theme = useTheme();
   const [open, setOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("Dashboard");
@@ -215,6 +60,7 @@ function MainPage() {
   const pChartRef = useRef(null);
   const cChartRef = useRef(null);
 
+  //Fetches the URL of the most recent image from S3
   const getMostRecentItemImageUrl = async () => {
     try {
       const listResult = await listS3Objects({
@@ -257,6 +103,7 @@ function MainPage() {
     }
   };
 
+  //Handle the manual capture button click event
   const handleManualCaptureClick = async () => {
     console.log("Manual capture started, setting loading true");
     setLoading(true); // Show loader immediately on button click
@@ -356,6 +203,7 @@ function MainPage() {
     setOpen(false);
   };
 
+  //Aggregates data for the modal display
   const aggregateDataForModal = useCallback(async () => {
     // Retrieve user details asynchronously
     const user = await currentAuthenticatedUser();
